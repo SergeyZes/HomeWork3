@@ -1,24 +1,24 @@
 package zesley.sergey.lesson3;
 
-import android.content.DialogInterface;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.TextView;
 
-import org.reactivestreams.Subscription;
-
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.util.concurrent.TimeUnit;
 
 import io.reactivex.BackpressureStrategy;
 import io.reactivex.Flowable;
-import io.reactivex.FlowableEmitter;
 import io.reactivex.FlowableOnSubscribe;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.Disposable;
-import io.reactivex.exceptions.UndeliverableException;
-import io.reactivex.functions.Consumer;
 import io.reactivex.plugins.RxJavaPlugins;
 import io.reactivex.schedulers.Schedulers;
 
@@ -53,7 +53,7 @@ public class MainActivity extends AppCompatActivity {
         btnStartConversion.setOnClickListener(v -> {
             mAlertDialog.show();
             btnStartConversion.setEnabled(false);
-            tvConversionStatus.setText("идет прелбразование...");
+            tvConversionStatus.setText("идет преобразование...");
             mSubscription = mFlowable.subscribe(string -> {
                         mSubscription.dispose();
                         mSubscription = null;
@@ -81,17 +81,29 @@ public class MainActivity extends AppCompatActivity {
         });
 
         mFlowable = Flowable.create((FlowableOnSubscribe<String>) emitter -> {
-            for (int i = 0; i <= 20; i++) {
-                if (emitter.isCancelled()) break;
-                try {
-                    TimeUnit.MILLISECONDS.sleep(500);
+            try {
 
-                } catch (InterruptedException e) {
-                    emitter.onError(e);
+                InputStream bm = getResources().openRawResource(R.raw.tst);
+                BufferedInputStream bufferedInputStream = new BufferedInputStream(bm);
+                Bitmap bmp = BitmapFactory.decodeStream(bufferedInputStream);
+
+                TimeUnit.MILLISECONDS.sleep(10000);
+
+                if (!emitter.isCancelled()) {
+
+                    FileOutputStream outputStream = new FileOutputStream(new File(getFilesDir(), "tst.png"));
+
+                    bmp.compress(Bitmap.CompressFormat.PNG, 100, outputStream);
                 }
+
+
+            } catch (Exception e) {
+                emitter.onError(e);
             }
             emitter.onComplete();
-        }, BackpressureStrategy.LATEST).subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread());
+        }, BackpressureStrategy.LATEST)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread());
         RxJavaPlugins.setErrorHandler(throwable -> {
             //
         });
